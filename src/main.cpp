@@ -129,6 +129,10 @@ void setup() {
 
 
   WiFi.mode(WIFI_STA);
+  // Disattiva il modem-sleep: dopo lunghi periodi di inattività la radio
+  // perdeva i primi pacchetti TCP, causando timeout al monitoraggio.
+  WiFi.setSleep(false);
+  WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("Connessione Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -145,7 +149,21 @@ void setup() {
   server.begin();
 }
 
+// Verifica periodicamente il link Wi-Fi e tenta la riconnessione se cade.
+void maintainWiFi() {
+  static unsigned long lastCheckMs = 0;
+  unsigned long now = millis();
+  if (now - lastCheckMs < 5000) return;
+  lastCheckMs = now;
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wi-Fi disconnesso: riconnessione");
+    WiFi.reconnect();
+  }
+}
+
 void loop() {
+  maintainWiFi();
   updateSensor();
   server.handleClient();
 }
